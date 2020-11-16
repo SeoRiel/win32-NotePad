@@ -4,7 +4,8 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = TEXT("NotePad");
 
-int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpszCmdParam, _In_ int nCmdShow)
+int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
+, _In_ LPSTR lpszCmdParam, _In_ int nCmdShow)
 {
 	HWND hWnd;
 	MSG Message;
@@ -28,7 +29,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 		NULL, (HMENU)NULL, hInstance, NULL);
 	ShowWindow(hWnd, nCmdShow);
 
-	while (GetMessage(&Message, 0, 0, 0))
+	while (GetMessage(&Message, 0, 0, 0)) 
     {
 		TranslateMessage(&Message);
 		DispatchMessage(&Message);
@@ -41,70 +42,57 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     HDC hdc;
     PAINTSTRUCT ps;
 
-	static char txtLength[10][99];
-	static char caretPosX, caretPosY;
+    TCHAR txtArray[1024] = "\0";
 
-	static SIZE txtSize;
-
-	int count = 0;
+    static char testText[256] = "\0";
+    static int txtColumn = 2;                  // Text column
+    static int txtWidth = 2;                    // Text width
+    static int x, y;                                // set TextOut() position
 
     switch (message)
     {
-    case WM_CREATE:
-		caretPosX = caretPosY = 0;
+    // Input keyboard value
+    case WM_CHAR:
+        txtColumn = strlen(testText);
+        //txtWidth = 1;
+        testText[txtColumn] = (TCHAR)wParam;
+        testText[txtColumn + 1] = 0;
+
+        // Go to next width
+        if (wParam == VK_RETURN)
+        {
+            txtColumn -= 1;
+            y += 8;
+        }
+        // Delete text column
+        else if (wParam == VK_BACK && txtColumn)
+        {
+            txtColumn -= 2;
+        }
+
+        InvalidateRect(hWnd, NULL, TRUE);
         break;
 
     // Output Text Data
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
 
-        CreateCaret(hWnd, NULL, 1, 20);  // Create cursor
-		SetCaretPos(3, 0);						// Set cursor position
-        ShowCaret(hWnd);                    // Print cursor
+        CreateCaret(hWnd, NULL, 3, 10); // Create Cursor
 
-		for (count = 0; count < caretPosY+1; count++)
-		{
-			GetTextExtentPoint(hdc, txtLength[count], strlen(txtLength[count]), &txtSize);
+        // Rect
+        
+        TextOut(hdc, 0, 0, txtArray, lstrlen(txtArray));
 
-			TextOut(hdc, 0, count * 20, txtLength[count], strlen(txtLength[count]));
-
-			SetCaretPos(txtSize.cx, count * 20);	// Move caret position
-		}
-
+        for (int width = 0; width < txtWidth; width++)
+        {
+            TextOut(hdc, 0, y, testText, strlen(testText));
+        }
         EndPaint(hWnd, &ps);
         break;
 
-	case WM_CHAR:
-		if ((wParam == VK_BACK) && (count > 0))
-		{
-			count--;
-		}
-		else if(VK_RETURN)
-		{
-			if (caretPosY < 9)
-			{
-				count = 0;
-				caretPosX++;
-			}
-			else
-			{
-				if (count < 98)
-				{
-					txtLength[caretPosY][count++] = wParam;
-				}
-			}
-		}
-
-		txtLength[caretPosY][count] = '\0';
-		InvalidateRgn(hWnd, NULL, TRUE);
-		break;
-
     case WM_DESTROY:
-		HideCaret(hWnd);
-		DestroyCaret();
         PostQuitMessage(0);
         break;
-
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
